@@ -1,0 +1,38 @@
+// {
+//   "extends": "../backend/tsconfig.json",
+//   "compilerOptions": {
+//     "incremental": true,
+//     "tsBuildInfoFile": ".tsbuildinfo",
+//     "outDir": "dist",
+//     "rootDir": "src",
+//     "types": ["node"]
+//   },
+//   "include": ["src"],
+//   "references": [
+//     {
+//       "path": "../lib/db"
+//     },
+//     {
+//       "path": "../lib/api-zod"
+//     }
+//   ]
+// }
+
+
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

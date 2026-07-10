@@ -1,0 +1,1219 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.2.0
+  description: ArriveLink API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: cities
+    description: City operations
+  - name: companies
+    description: Company operations
+  - name: routes
+    description: Route operations
+  - name: reviews
+    description: Review operations
+  - name: users
+    description: Traveler user operations
+  - name: messages
+    description: Messaging operations
+  - name: operator
+    description: Operator (business) operations
+  - name: admin
+    description: Admin operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /cities:
+    get:
+      operationId: getCities
+      tags: [cities]
+      summary: Get all cities
+      responses:
+        "200":
+          description: List of cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/City"
+
+  /companies:
+    get:
+      operationId: getCompanies
+      tags: [companies]
+      summary: Get list of companies (id + name only)
+      responses:
+        "200":
+          description: Company list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyListItem"
+
+  /companies/featured:
+    get:
+      operationId: getFeaturedCompanies
+      tags: [companies]
+      summary: Get featured companies
+      responses:
+        "200":
+          description: Featured companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeaturedCompany"
+
+  /companies/{id}:
+    get:
+      operationId: getCompany
+      tags: [companies]
+      summary: Get company detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Company detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyDetail"
+        "404":
+          description: Not found
+
+  /companies/{id}/reviews:
+    get:
+      operationId: getCompanyReviews
+      tags: [companies]
+      summary: Get company reviews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyReview"
+
+  /routes/popular:
+    get:
+      operationId: getPopularRoutes
+      tags: [routes]
+      summary: Get popular routes
+      responses:
+        "200":
+          description: Popular routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PopularRoute"
+
+  /routes/search:
+    get:
+      operationId: searchRoutes
+      tags: [routes]
+      summary: Search routes by city pair
+      parameters:
+        - name: from_city_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: to_city_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Routes for city pair
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchRoute"
+
+  /stats/platform:
+    get:
+      operationId: getPlatformStats
+      tags: [routes]
+      summary: Get platform stats
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+  /reviews:
+    post:
+      operationId: submitReview
+      tags: [reviews]
+      summary: Submit a traveler review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyReview"
+
+  /users/auth/register:
+    post:
+      operationId: userRegister
+      tags: [users]
+      summary: Register a new traveler account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAuthResponse"
+
+  /users/auth/login:
+    post:
+      operationId: userLogin
+      tags: [users]
+      summary: Traveler login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAuthResponse"
+
+  /users/me:
+    get:
+      operationId: getUserMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /messages/start:
+    post:
+      operationId: startConversation
+      tags: [messages]
+      summary: Start a conversation with a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartConversationInput"
+      responses:
+        "201":
+          description: Conversation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartConversationResponse"
+
+  /messages/conversations:
+    get:
+      operationId: getConversations
+      tags: [messages]
+      summary: Get conversations for current user or operator
+      responses:
+        "200":
+          description: Conversations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+
+  /messages/conversations/{id}:
+    get:
+      operationId: getConversationMessages
+      tags: [messages]
+      summary: Get messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+
+  /messages/conversations/{id}/send:
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /operator/auth/login:
+    post:
+      operationId: operatorLogin
+      tags: [operator]
+      summary: Operator login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorLoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorAuthResponse"
+
+  /operator/auth/signup:
+    post:
+      operationId: operatorSignup
+      tags: [operator]
+      summary: Operator signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorSignupInput"
+      responses:
+        "200":
+          description: Signup successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorAuthResponse"
+
+  /operator/me:
+    get:
+      operationId: getOperatorMe
+      tags: [operator]
+      summary: Get operator profile
+      responses:
+        "200":
+          description: Operator profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorProfile"
+
+  /operator/me/company:
+    put:
+      operationId: updateOperatorCompany
+      tags: [operator]
+      summary: Update operator company profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyUpdate"
+      responses:
+        "200":
+          description: Updated company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyDetail"
+
+  /operator/me/routes:
+    get:
+      operationId: getOperatorRoutes
+      tags: [operator]
+      summary: Get operator routes
+      responses:
+        "200":
+          description: Routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorRoute"
+    post:
+      operationId: addOperatorRoute
+      tags: [operator]
+      summary: Add a new route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteInput"
+      responses:
+        "201":
+          description: Route created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorRoute"
+
+  /operator/me/routes/{id}:
+    put:
+      operationId: updateOperatorRoute
+      tags: [operator]
+      summary: Update a route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteUpdate"
+      responses:
+        "200":
+          description: Updated route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorRoute"
+    delete:
+      operationId: deleteOperatorRoute
+      tags: [operator]
+      summary: Delete a route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /operator/me/conversations:
+    get:
+      operationId: getOperatorConversations
+      tags: [operator]
+      summary: Get conversations for operator's company
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorConversationSummary"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin stats
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get all traveler users
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{id}:
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /admin/companies:
+    get:
+      operationId: getAdminCompanies
+      tags: [admin]
+      summary: Get all companies (admin)
+      responses:
+        "200":
+          description: Companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminCompany"
+
+  /admin/companies/{id}/invite-code:
+    put:
+      operationId: updateCompanyInviteCode
+      tags: [admin]
+      summary: Update company invite code
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteCodeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /admin/companies/{id}/verify:
+    put:
+      operationId: updateCompanyFlags
+      tags: [admin]
+      summary: Update company verification/featured flags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyFlagsUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /admin/operators:
+    get:
+      operationId: getAdminOperators
+      tags: [admin]
+      summary: Get all operators
+      responses:
+        "200":
+          description: Operators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminOperator"
+
+  /admin/operators/{id}:
+    delete:
+      operationId: deleteAdminOperator
+      tags: [admin]
+      summary: Delete an operator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        state:
+          type: string
+      required: [id, name, state]
+
+    CompanyListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+
+    FeaturedCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tagline:
+          type: ["string", "null"]
+        is_verified:
+          type: boolean
+        rating:
+          type: number
+        review_count:
+          type: integer
+      required: [id, name, is_verified, rating, review_count]
+
+    CompanyRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        price:
+          type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
+        departure_times:
+          type: array
+          items:
+            type: string
+        terminal_location:
+          type: string
+        terminal_address:
+          type: ["string", "null"]
+        status:
+          type: string
+        departure_city:
+          $ref: "#/components/schemas/City"
+        destination_city:
+          $ref: "#/components/schemas/City"
+      required: [id, price, price_type, departure_times, terminal_location, status, departure_city, destination_city]
+
+    CompanyDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tagline:
+          type: ["string", "null"]
+        about:
+          type: ["string", "null"]
+        logo_url:
+          type: ["string", "null"]
+        founded_year:
+          type: ["integer", "null"]
+        fleet_size:
+          type: ["integer", "null"]
+        is_verified:
+          type: boolean
+        rating:
+          type: number
+        review_count:
+          type: integer
+        response_rate:
+          type: number
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyRoute"
+      required: [id, name, is_verified, rating, review_count, response_rate, routes]
+
+    CompanyReview:
+      type: object
+      properties:
+        id:
+          type: integer
+        traveler_name:
+          type: string
+        overall_rating:
+          type: number
+        review_text:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        rating_punctuality:
+          type: integer
+        rating_comfort:
+          type: integer
+        rating_safety:
+          type: integer
+        rating_value:
+          type: integer
+        rating_professionalism:
+          type: integer
+      required: [id, traveler_name, overall_rating, created_at, rating_punctuality, rating_comfort, rating_safety, rating_value, rating_professionalism]
+
+    SearchRouteCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tagline:
+          type: ["string", "null"]
+        logo_url:
+          type: ["string", "null"]
+        is_verified:
+          type: boolean
+        rating:
+          type: number
+        review_count:
+          type: integer
+      required: [id, name, is_verified, rating, review_count]
+
+    SearchRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        price:
+          type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
+        departure_times:
+          type: array
+          items:
+            type: string
+        terminal_location:
+          type: string
+        terminal_address:
+          type: ["string", "null"]
+        status:
+          type: string
+        company:
+          $ref: "#/components/schemas/SearchRouteCompany"
+      required: [id, price, price_type, departure_times, terminal_location, status, company]
+
+    PopularRoute:
+      type: object
+      properties:
+        departure_city:
+          $ref: "#/components/schemas/City"
+        destination_city:
+          $ref: "#/components/schemas/City"
+        company_count:
+          type: integer
+        min_price:
+          type: integer
+      required: [departure_city, destination_city, company_count, min_price]
+
+    PlatformStats:
+      type: object
+      properties:
+        company_count:
+          type: integer
+        city_count:
+          type: integer
+        route_count:
+          type: integer
+        user_count:
+          type: integer
+      required: [company_count, city_count, route_count, user_count]
+
+    ReviewInput:
+      type: object
+      properties:
+        traveler_name:
+          type: string
+        traveler_email:
+          type: string
+        company_id:
+          type: integer
+        route_id:
+          type: ["integer", "null"]
+        rating_punctuality:
+          type: integer
+        rating_comfort:
+          type: integer
+        rating_safety:
+          type: integer
+        rating_value:
+          type: integer
+        rating_professionalism:
+          type: integer
+        review_text:
+          type: ["string", "null"]
+      required: [traveler_name, traveler_email, company_id, rating_punctuality, rating_comfort, rating_safety, rating_value, rating_professionalism]
+
+    UserRegisterInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        password:
+          type: string
+      required: [name, email, password]
+
+    UserLoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    UserAuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user_id:
+          type: integer
+        name:
+          type: string
+      required: [token, user_id, name]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        created_at:
+          type: string
+      required: [id, name, email, created_at]
+
+    StartConversationInput:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        initial_message:
+          type: string
+        guest_name:
+          type: ["string", "null"]
+        guest_email:
+          type: ["string", "null"]
+      required: [company_id, initial_message]
+
+    StartConversationResponse:
+      type: object
+      properties:
+        conversation_id:
+          type: integer
+        company_name:
+          type: ["string", "null"]
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+      required: [conversation_id, message]
+
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        company_name:
+          type: ["string", "null"]
+        last_message:
+          type: ["string", "null"]
+        last_message_at:
+          type: string
+        unread_count:
+          type: integer
+      required: [id, company_id, last_message_at, unread_count]
+
+    OperatorConversationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        guest_email:
+          type: ["string", "null"]
+        last_message:
+          type: ["string", "null"]
+        last_message_at:
+          type: string
+        unread_count:
+          type: integer
+      required: [id, user_name, last_message_at, unread_count]
+
+    ConversationDetail:
+      type: object
+      properties:
+        conversation_id:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required: [conversation_id, messages]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversation_id:
+          type: integer
+        sender_type:
+          type: string
+          enum: [user, company]
+        sender_name:
+          type: string
+        body:
+          type: string
+        created_at:
+          type: string
+      required: [id, conversation_id, sender_type, sender_name, body, created_at]
+
+    SendMessageInput:
+      type: object
+      properties:
+        body:
+          type: string
+      required: [body]
+
+    OperatorLoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    OperatorSignupInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        company_id:
+          type: integer
+        invite_code:
+          type: string
+      required: [email, password, company_id, invite_code]
+
+    OperatorAuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        operator_id:
+          type: integer
+      required: [token, operator_id]
+
+    OperatorProfile:
+      type: object
+      properties:
+        company:
+          $ref: "#/components/schemas/CompanyDetail"
+      required: [company]
+
+    OperatorRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        departure_city:
+          $ref: "#/components/schemas/City"
+        destination_city:
+          $ref: "#/components/schemas/City"
+        price:
+          type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
+        departure_times:
+          type: array
+          items:
+            type: string
+        terminal_location:
+          type: string
+        terminal_address:
+          type: ["string", "null"]
+        status:
+          type: string
+        is_active:
+          type: boolean
+      required: [id, departure_city, destination_city, price, price_type, departure_times, terminal_location, status, is_active]
+
+    RouteInput:
+      type: object
+      properties:
+        departure_city_id:
+          type: integer
+        destination_city_id:
+          type: integer
+        price:
+          type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        departure_times:
+          type: array
+          items:
+            type: string
+        terminal_location:
+          type: string
+        terminal_address:
+          type: ["string", "null"]
+        status:
+          type: string
+      required: [departure_city_id, destination_city_id, price, departure_times, terminal_location]
+
+    RouteUpdate:
+      type: object
+      properties:
+        price:
+          type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        departure_times:
+          type: array
+          items:
+            type: string
+        terminal_location:
+          type: string
+        terminal_address:
+          type: ["string", "null"]
+        status:
+          type: string
+        is_active:
+          type: boolean
+
+    CompanyUpdate:
+      type: object
+      properties:
+        tagline:
+          type: ["string", "null"]
+        about:
+          type: ["string", "null"]
+        founded_year:
+          type: ["integer", "null"]
+        fleet_size:
+          type: ["integer", "null"]
+        rep_whatsapp:
+          type: ["string", "null"]
+        rep_phone:
+          type: ["string", "null"]
+
+    AdminStats:
+      type: object
+      properties:
+        total_users:
+          type: integer
+        total_companies:
+          type: integer
+        total_operators:
+          type: integer
+        total_messages:
+          type: integer
+      required: [total_users, total_companies, total_operators, total_messages]
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        conversation_count:
+          type: integer
+      required: [id, name, email, created_at, conversation_count]
+
+    AdminCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        invite_code:
+          type: ["string", "null"]
+        rating:
+          type: number
+        review_count:
+          type: integer
+        is_verified:
+          type: boolean
+        featured:
+          type: boolean
+      required: [id, name, rating, review_count, is_verified, featured]
+
+    AdminOperator:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        company_name:
+          type: ["string", "null"]
+        created_at:
+          type: string
+      required: [id, email, created_at]
+
+    InviteCodeUpdate:
+      type: object
+      properties:
+        invite_code:
+          type: string
+      required: [invite_code]
+
+    CompanyFlagsUpdate:
+      type: object
+      properties:
+        is_verified:
+          type: boolean
+        featured:
+          type: boolean
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
