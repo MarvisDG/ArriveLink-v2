@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useLocation, Link } from "wouter";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   MessageSquare, User, LogOut, ArrowRight, Bus, Loader2, Send,
   ChevronLeft, Clock, LayoutDashboard, Settings, TrendingUp,
@@ -84,7 +85,7 @@ const ACTIVITY_DATA = [
 ];
 
 export default function AppDashboard() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -97,11 +98,11 @@ export default function AppDashboard() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
 
   useEffect(() => {
-    if (!getToken()) { navigate("/app/login"); return; }
+    if (!getToken()) { router.push("/app/login"); return; }
     apiFetch("/users/me").then(setProfile).catch(() => {
       localStorage.removeItem("user_token");
       localStorage.removeItem("user_name");
-      navigate("/app/login");
+      router.push("/app/login");
     });
     loadConversations();
   }, []);
@@ -147,7 +148,7 @@ export default function AppDashboard() {
   function handleLogout() {
     localStorage.removeItem("user_token");
     localStorage.removeItem("user_name");
-    navigate("/");
+    router.push("/");
   }
 
   const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);

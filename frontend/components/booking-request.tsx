@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useLocation, Link } from "wouter";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Bus, MapPin, Clock, Users, Phone, User, Loader2, ShieldCheck,
@@ -31,7 +32,7 @@ interface RouteDetail {
 
 export default function BookingRequest() {
   const { routeId } = useParams<{ routeId: string }>();
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
 
   const [name, setName] = useState("");
@@ -68,7 +69,7 @@ export default function BookingRequest() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to submit request");
-      navigate(`/booking/awaiting/${data.id}`);
+      router.push(`/booking/awaiting/${data.id}`);
     } catch (err) {
       toast({
         title: "Request failed",

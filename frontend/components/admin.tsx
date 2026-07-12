@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
-  DashboardShell, StatCard, NavItem,
+  DashboardShell, StatCard, type NavItem,
   CHART_PRIMARY, CHART_SECONDARY, CHART_BLUE, CHART_PURPLE, PIE_COLORS,
 } from "@/components/dashboard-shell";
 

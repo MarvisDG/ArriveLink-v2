@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useLocation, Link } from "wouter";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Bus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,7 @@ function CountdownRing({
 
 export default function BookingAwaiting() {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const [, navigate] = useLocation();
+  const router = useRouter();
 
   const { data: booking, isLoading, refetch } = useQuery<BookingDetail>({
     queryKey: ["booking", bookingId],
@@ -115,7 +116,7 @@ export default function BookingAwaiting() {
   useEffect(() => {
     if (!booking) return;
     if (booking.status === "AWAITING_PAYMENT") {
-      navigate(`/booking/payment/${booking.id}`);
+      router.push(`/booking/payment/${booking.id}`);
     }
   }, [booking?.status, navigate]);
 
@@ -213,7 +214,7 @@ export default function BookingAwaiting() {
               <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
               <h2 className="font-bold text-xl">Request Accepted!</h2>
               <p className="text-muted-foreground">Redirecting you to payment...</p>
-              <Button onClick={() => navigate(`/booking/payment/${booking.id}`)}>
+              <Button onClick={() => router.push(`/booking/payment/${booking.id}`)}>
                 Continue to Payment <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -251,7 +252,7 @@ export default function BookingAwaiting() {
             <div className="text-center space-y-4">
               <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
               <h2 className="font-bold text-xl">You're all set!</h2>
-              <Button onClick={() => navigate(`/booking/ticket/${booking.id}`)}>
+              <Button onClick={() => router.push(`/booking/ticket/${booking.id}`)}>
                 View E-Ticket <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>

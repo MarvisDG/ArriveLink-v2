@@ -1,4 +1,4 @@
-import Company from "@/views/company";
+import Company from "@/components/company";
 
 export default function CompanyPage() {
   return <Company />;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
 import {
   Bus, LogOut, Save, Plus, Trash2, Pencil, CheckCircle2,
   Loader2, Building2, Route, ToggleLeft, ToggleRight,
@@ -31,7 +31,7 @@ import {
   PieChart, Pie, Cell, RadialBarChart, RadialBar, LineChart, Line,
 } from "recharts";
 import {
-  DashboardShell, StatCard, NavItem,
+  DashboardShell, StatCard, type NavItem,
   CHART_PRIMARY, CHART_SECONDARY, CHART_BLUE, PIE_COLORS,
 } from "@/components/dashboard-shell";
 
@@ -216,7 +216,7 @@ function RouteFormDialog({
 }
 
 export default function OperatorDashboard() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -232,7 +232,7 @@ export default function OperatorDashboard() {
   useEffect(() => {
     if (meError) {
       localStorage.removeItem("operator_token");
-      navigate("/business/login");
+      router.push("/business/login");
     }
   }, [meError, navigate]);
 
@@ -315,7 +315,7 @@ export default function OperatorDashboard() {
 
   function handleLogout() {
     localStorage.removeItem("operator_token");
-    navigate("/business/login");
+    router.push("/business/login");
   }
 
   function handleSaveRoute(data: Record<string, unknown>) {

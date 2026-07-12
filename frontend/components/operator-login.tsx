@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Bus, LogIn, UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,7 @@ async function apiPost(path: string, body: unknown) {
 }
 
 export default function OperatorLogin() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +65,7 @@ export default function OperatorLogin() {
         password: loginPassword,
       });
       localStorage.setItem("operator_token", data.token);
-      navigate("/business/dashboard");
+      router.push("/business/dashboard");
     } catch (err: unknown) {
       toast({
         title: "Login failed",
@@ -95,7 +96,7 @@ export default function OperatorLogin() {
         company_id: parseInt(signupCompanyId),
       });
       localStorage.setItem("operator_token", data.token);
-      navigate("/business/dashboard");
+      router.push("/business/dashboard");
     } catch (err: unknown) {
       toast({
         title: "Sign up failed",

@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Link } from "wouter";
+import Link from "next/link";
 import { Bus, Bell, Search, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";

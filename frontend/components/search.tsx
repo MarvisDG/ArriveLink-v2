@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearch } from "wouter";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Clock, MapPin, Search as SearchIcon, ShieldCheck, Bus, AlertCircle, Calendar } from "lucide-react";
-import { Link } from "wouter";
 import {
   useGetCities,
   useSearchRoutes,
@@ -17,7 +17,8 @@ import { StarRating } from "@/components/star-rating";
 import { Layout } from "@/components/layout";
 
 export default function Search() {
-  const search = useSearch();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
   const params = new URLSearchParams(search);
   const fromId = params.get("from");
   const toId = params.get("to");

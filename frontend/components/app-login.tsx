@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useLocation, Link } from "wouter";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Bus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AppLogin() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,7 +38,7 @@ export default function AppLogin() {
       localStorage.setItem("user_token", data.token);
       localStorage.setItem("user_name", data.name);
       toast({ title: `Welcome back, ${data.name}!` });
-      navigate("/app");
+      router.push("/app");
     } catch (err) {
       toast({
         title: "Login failed",
@@ -64,7 +65,7 @@ export default function AppLogin() {
       localStorage.setItem("user_token", data.token);
       localStorage.setItem("user_name", data.name);
       toast({ title: `Welcome to ArriveLink, ${data.name}!` });
-      navigate("/app");
+      router.push("/app");
     } catch (err) {
       toast({
         title: "Registration failed",

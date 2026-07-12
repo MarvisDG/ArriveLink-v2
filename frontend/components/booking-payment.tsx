@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useLocation, Link } from "wouter";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   CreditCard, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Shield, XCircle,
@@ -61,7 +62,7 @@ function useCountdown(deadline: string | null, onExpire?: () => void) {
 
 export default function BookingPayment() {
   const { bookingId } = useParams<{ bookingId: string }>();
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
@@ -80,10 +81,10 @@ export default function BookingPayment() {
   useEffect(() => {
     if (!booking) return;
     if (booking.status === "TICKET_ISSUED" || booking.status === "BOARDED") {
-      navigate(`/booking/ticket/${booking.id}`);
+      router.push(`/booking/ticket/${booking.id}`);
     }
     if (booking.status === "AWAITING_RESPONSE" || booking.status === "CONFIRMED") {
-      navigate(`/booking/awaiting/${booking.id}`);
+      router.push(`/booking/awaiting/${booking.id}`);
     }
   }, [booking?.status, navigate]);
 
@@ -94,7 +95,7 @@ export default function BookingPayment() {
       const res = await fetch(`${API_BASE}/bookings/${bookingId}/pay`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Payment failed");
-      navigate(`/booking/ticket/${data.id}`);
+      router.push(`/booking/ticket/${data.id}`);
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed. Please try again.");
     } finally {

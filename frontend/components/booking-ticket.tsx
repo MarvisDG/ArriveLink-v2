@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, Link } from "wouter";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2, Loader2, Bus, MapPin, Clock, Users, Calendar, QrCode, ArrowRight,

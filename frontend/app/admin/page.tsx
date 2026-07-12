@@ -1,4 +1,4 @@
-import Admin from "@/views/admin";
+import Admin from "@/components/admin";
 
 export default function AdminPage() {
   return <Admin />;
