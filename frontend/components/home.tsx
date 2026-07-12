@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StarRating } from "@/components/star-rating";
-import { Layout } from "@/components/layout";
 import { formatPrice } from "@/lib/utils";
 import {
   Select,
@@ -89,7 +88,7 @@ export default function Home() {
   }
 
   return (
-    <Layout>
+    // <Layout>
       <div className="flex flex-col min-h-screen font-sans bg-[#f4fcf4] text-[#1a331a] selection:bg-[#c2f0c2] selection:text-[#0f240f] overflow-hidden">
         
         <section className="relative pt-24 pb-32 lg:pt-32 lg:pb-40 px-4 flex items-center justify-center min-h-[85vh]">
@@ -184,7 +183,7 @@ export default function Home() {
                     </Select>
                   </div>
 
-                  <div className="absolute left-6 top-[156px] w-0.5 h-6 bg-gradient-to-b from-[#4ade80] to-[#3aa53a] z-10" />
+                  <div className="absolute left-6 top-[156px] w-0.5 h-6 bg-linear-to-b from-[#4ade80] to-[#3aa53a] z-10" />
 
                   <div className="relative group">
                      <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#3aa53a] z-10" />
@@ -230,8 +229,8 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-12 border-y border-[#d1f5d1] bg-[#eaffea]/30 backdrop-blur-sm relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#f4fcf4] via-transparent to-[#f4fcf4] z-10 pointer-events-none w-full" />
+        <section className="py-12 border-none bg-[#eaffea]/30 relative overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-r from-[#f4fcf4] via-transparent to-[#f4fcf4] z-10 pointer-events-none w-full" />
           
           <div 
             className="w-full flex"
@@ -245,7 +244,7 @@ export default function Home() {
               animate={{ x: ["0%", "-50%"] }}
               transition={{ ease: "linear", duration: 30, repeat: Infinity }}
             >
-              <div className="flex items-center gap-24 px-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+              <div className="flex items-center gap-24 px-12 grayscale hover:grayscale-0 transition-all duration-500">
                 {LOGOS.map((logo, i) => (
                   <div key={`logo-1-${i}`} className={`flex items-center gap-2 text-[#2c522c] ${logo.font} ${logo.size}`}>
                     {logo.icon && logo.name === "Microsoft" && (
@@ -359,7 +358,7 @@ export default function Home() {
                       onClick={() => handlePopularRouteClick(route.departure_city.id, route.destination_city.id)}
                       className="group relative flex flex-col justify-between h-full min-h-[140px] rounded-3xl bg-white border border-[#d1f5d1] p-6 text-left hover:border-[#4ade80] hover:shadow-[0_10px_40px_-10px_rgba(74,222,128,0.2)] transition-all overflow-hidden"
                     >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#eaffea] to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-[#eaffea] to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="relative z-10 flex items-center justify-between w-full mb-4">
                         <div className="flex flex-col">
@@ -506,6 +505,6 @@ export default function Home() {
         </section>
 
       </div>
-    </Layout>
+    // </Layout>
   );
 }

@@ -12,7 +12,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f4fcf4] text-[#1a331a] selection:bg-[#c2f0c2] selection:text-[#0f240f]">
-      <header className="sticky top-0 z-50 w-full border-b border-[#c2f0c2] bg-[#f4fcf4]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4fcf4]/60">
+      <header className="sticky top-0 z-50 w-full border-b border-[#c2f0c2] bg-[#f4fcf4]/80 backdrop-blur-md supports-backdrop-filter:bg-[#f4fcf4]/60">
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <Link
             href="/"
