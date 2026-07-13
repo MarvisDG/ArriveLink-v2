@@ -1,3 +1,4 @@
+// home_2.tsx
 "use client";
 
 import { useState } from "react";
@@ -88,7 +89,17 @@ export default function Home() {
   }
 
   return (
-    // <Layout>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes smoothMarquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee-smooth {
+          animation: smoothMarquee 30s linear infinite;
+          will-change: transform;
+        }
+      `}} />
       <div className="flex flex-col min-h-screen font-sans bg-[#f4fcf4] text-[#1a331a] selection:bg-[#c2f0c2] selection:text-[#0f240f] overflow-hidden">
         
         <section className="relative pt-24 pb-32 lg:pt-32 lg:pb-40 px-4 flex items-center justify-center min-h-[85vh]">
@@ -99,6 +110,7 @@ export default function Home() {
                 y: [0, -20, 0]
               }}
               transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+              style={{ willChange: "transform" }}
               className="absolute top-[20%] left-0 w-64 h-1 bg-[#d1f5d1] blur-[100px] opacity-60 rounded-full"
             />
              <motion.div 
@@ -107,6 +119,7 @@ export default function Home() {
                 y: [0, 30, 0]
               }}
               transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+              style={{ willChange: "transform" }}
               className="absolute bottom-[20%] right-0 w-96 h-2 bg-[#bbf0bb] blur-[120px] opacity-50 rounded-full"
             />
           </div>
@@ -239,11 +252,7 @@ export default function Home() {
               WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)'
             }}
           >
-            <motion.div
-              className="flex whitespace-nowrap items-center w-max"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{ ease: "linear", duration: 30, repeat: Infinity }}
-            >
+            <div className="flex whitespace-nowrap items-center w-max animate-marquee-smooth">
               <div className="flex items-center gap-24 px-12 grayscale hover:grayscale-0 transition-all duration-500">
                 {LOGOS.map((logo, i) => (
                   <div key={`logo-1-${i}`} className={`flex items-center gap-2 text-[#2c522c] ${logo.font} ${logo.size}`}>
@@ -284,7 +293,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
@@ -505,6 +514,6 @@ export default function Home() {
         </section>
 
       </div>
-    // </Layout>
+    </>
   );
 }

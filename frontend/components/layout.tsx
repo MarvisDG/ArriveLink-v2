@@ -1,5 +1,9 @@
+// layout.tsx
+"use client";
+
 import Link from "next/link";
-import { Bus, User, Ticket } from "lucide-react";
+import { Bus, Home, Users, ClipboardCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 function getUserToken() {
@@ -12,46 +16,51 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f4fcf4] text-[#1a331a] selection:bg-[#c2f0c2] selection:text-[#0f240f]">
-      <header className="sticky top-0 z-50 w-full border-b border-[#c2f0c2] bg-[#f4fcf4]/80 backdrop-blur-md supports-backdrop-filter:bg-[#f4fcf4]/60">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 font-display text-2xl font-black tracking-tight text-[#142914] group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#e1f8e1] flex items-center justify-center group-hover:bg-[#4ade80] transition-colors">
-              <Bus className="h-6 w-6 text-[#3aa53a] group-hover:text-[#142914] transition-colors" />
+      
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <motion.nav
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="pointer-events-auto relative bg-[#09090b] rounded-b-4xl px-8 py-3 flex items-center gap-10 shadow-2xl"
+        >
+          <svg className="absolute top-0 left-[-23px] w-6 h-6 text-[#09090b] fill-current" viewBox="0 0 24 24">
+            <path d="M0 0H24V24C24 10.745 13.255 0 0 0Z" />
+          </svg>
+          <svg className="absolute top-0 right-[-23px] w-6 h-6 text-[#09090b] fill-current" viewBox="0 0 24 24">
+            <path d="M0 0H24C10.745 0 0 10.745 0 24V0Z" />
+          </svg>
+
+          <Link href="/app/login" className="relative transition-transform hover:scale-105">
+            <div className="w-11 h-11 rounded-full bg-[#b6e3f4] overflow-hidden border-[3px] border-[#09090b] flex items-center justify-center">
+              <img 
+                src="https://api.dicebear.com/7.x/notionists/svg?seed=Marvel&backgroundColor=transparent" 
+                alt="User" 
+                className="w-full h-full object-cover" 
+              />
             </div>
-            <span>ArriveLink</span>
+            <span className="absolute top-0 left-0 w-3.5 h-3.5 bg-[#10b981] rounded-full border-[2.5px] border-[#09090b]"></span>
           </Link>
-          <nav className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild className="text-[#3b6b3b] hover:text-[#142914] hover:bg-[#e1f8e1] font-semibold">
-              <Link href="/">Home</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild className="text-[#3b6b3b] hover:text-[#142914] hover:bg-[#e1f8e1] font-semibold">
-              <Link href="/bookings">
-                <Ticket className="h-4 w-4 mr-1.5" />
-                My Bookings
-              </Link>
-            </Button>
-            {isLoggedIn ? (
-              <Button variant="ghost" size="sm" asChild className="text-[#3b6b3b] hover:text-[#142914] hover:bg-[#e1f8e1] font-semibold">
-                <Link href="/app">
-                  <User className="h-4 w-4 mr-1.5" />
-                  My Account
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" asChild className="text-[#3b6b3b] hover:text-[#142914] hover:bg-[#e1f8e1] font-semibold">
-                <Link href="/app/login">Sign In</Link>
-              </Button>
-            )}
-            <Button size="sm" asChild className="bg-[#3aa53a] hover:bg-[#2c842c] text-white font-bold rounded-xl shadow-md transition-all hover:-translate-y-0.5">
-              <Link href="/business/login">For Business</Link>
-            </Button>
-          </nav>
-        </div>
+
+          <Link href="/app" className="text-[#a1a1aa] hover:text-white transition-colors">
+            <Users className="w-6 h-6 fill-current" />
+          </Link>
+
+          <Link href="/bookings" className="text-[#a1a1aa] hover:text-white transition-colors relative">
+            <ClipboardCheck className="w-6 h-6" />
+            <span className="absolute top-1 right-0 w-2.5 h-2.5 bg-[#a1a1aa] rounded-full border-[2.5px] border-[#09090b]"></span>
+          </Link>
+
+          <Link href="/" className="flex items-center gap-2.5 bg-white text-black px-6 py-2.5 rounded-[1.25rem] font-bold transition-transform hover:scale-105">
+            <span className="text-[15px]">Home</span>
+            <Home className="w-5 h-5 fill-current" />
+          </Link>
+
+        </motion.nav>
       </header>
-      <main className="flex-1">{children}</main>
+
+      <main className="flex-1 pt-24">{children}</main>
+      
       <footer className="border-t border-[#c2f0c2] py-16 bg-[#eaffea]">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
