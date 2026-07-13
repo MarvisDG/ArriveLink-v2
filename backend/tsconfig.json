@@ -37,5 +37,13 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/lib/api-client-react"]
+  // "exclude": ["node_modules", "dist", "src/lib/api-client-react"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/lib/api-client-react",
+    "src/lib/api-spec",
+    "src/lib/db",
+    "src/lib/api-zod"
+  ]
 }

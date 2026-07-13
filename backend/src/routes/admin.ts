@@ -9,7 +9,8 @@ import {
   updateCompanyFlags,
   getAdminOperators,
   deleteOperator,
-} from "../lib/mock-db.ts";
+} from "../lib/mock-db";
+
 
 const router: IRouter = Router();
 
