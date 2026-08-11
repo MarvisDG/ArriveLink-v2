@@ -273,7 +273,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-24 px-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+              <div className="flex items-center gap-24 px-12 grayscale hover:grayscale-0 transition-all duration-500">
                 {LOGOS.map((logo, i) => (
                   <div key={`logo-2-${i}`} className={`flex items-center gap-2 text-[#2c522c] ${logo.font} ${logo.size}`}>
                      {logo.icon && logo.name === "Microsoft" && (

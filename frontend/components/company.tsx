@@ -45,7 +45,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatPrice, getStatusColor, getStatusLabel, cn } from "@/lib/utils";
 import { StarRating } from "@/components/star-rating";
 import { MessageCompanyModal } from "@/components/message-company-modal";
-import { Layout } from "@/components/layout";
 
 const reviewFormSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -151,7 +150,7 @@ export default function Company() {
 
   if (isErrorCompany) {
     return (
-      <Layout>
+      
         <div className="container mx-auto px-4 py-32 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-6" />
           <h2 className="text-3xl font-bold mb-4 font-display">
@@ -164,13 +163,13 @@ export default function Company() {
             <Link href="/">Back to Search</Link>
           </Button>
         </div>
-      </Layout>
+      
     );
   }
 
   if (isLoadingCompany || !company) {
     return (
-      <Layout>
+    
         <div className="container mx-auto px-4 py-12 max-w-5xl">
           <div className="flex items-center gap-6 mb-12">
             <Skeleton className="w-24 h-24 rounded-full" />
@@ -181,18 +180,18 @@ export default function Company() {
           </div>
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
-      </Layout>
+    
     );
   }
 
   return (
-    <Layout>
+
       <div className="min-h-screen bg-muted/20 pb-20">
         {/* Company Header */}
         <div className="bg-card border-b">
           <div className="container mx-auto px-4 py-10 max-w-5xl">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted border flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                 {company.logo_url ? (
                   <img
                     src={company.logo_url}
@@ -299,7 +298,7 @@ export default function Company() {
                             <div className="font-display font-bold text-2xl">
                               {route.departure_city.name}
                             </div>
-                            <ArrowRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                            <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0" />
                             <div className="font-display font-bold text-2xl">
                               {route.destination_city.name}
                             </div>
@@ -633,6 +632,6 @@ export default function Company() {
           </Tabs>
         </div>
       </div>
-    </Layout>
+    
   );
 }

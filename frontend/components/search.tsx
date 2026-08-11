@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, getStatusColor, getStatusLabel, cn } from "@/lib/utils";
 import { StarRating } from "@/components/star-rating";
-import { Layout } from "@/components/layout";
 
 export default function Search() {
   const searchParams = useSearchParams();
@@ -53,7 +52,7 @@ export default function Search() {
 
   if (!isValidSearch) {
     return (
-      <Layout>
+      
         <div className="container mx-auto px-4 py-20 text-center">
           <h2 className="text-2xl font-bold mb-4">Invalid Search</h2>
           <p className="text-muted-foreground mb-8">
@@ -63,12 +62,10 @@ export default function Search() {
             <Link href="/">Return Home</Link>
           </Button>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="min-h-screen bg-muted/20 pb-20">
         {/* Search Header */}
         <div className="bg-primary text-primary-foreground py-10">
@@ -118,7 +115,7 @@ export default function Search() {
                 <div key={i} className="bg-card border rounded-2xl p-6">
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="w-full md:w-1/3 flex gap-4">
-                      <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+                      <Skeleton className="w-12 h-12 rounded-full shrink-0" />
                       <div className="space-y-2 flex-1">
                         <Skeleton className="h-6 w-3/4" />
                         <Skeleton className="h-4 w-1/2" />
@@ -168,7 +165,7 @@ export default function Search() {
                     <div className="w-full md:w-1/3 md:pr-6 md:border-r border-border">
                       <div className="flex items-start gap-4">
                         <Link href={`/company/${route.company.id}`}>
-                          <div className="w-12 h-12 rounded-full bg-muted border flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer">
+                          <div className="w-12 h-12 rounded-full bg-muted border flex items-center justify-center overflow-hidden shrink-0 cursor-pointer">
                             {route.company.logo_url ? (
                               <img
                                 src={route.company.logo_url}
@@ -284,6 +281,6 @@ export default function Search() {
           )}
         </div>
       </div>
-    </Layout>
+    
   );
 }

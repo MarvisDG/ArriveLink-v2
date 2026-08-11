@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
-import { Layout } from "@/components/layout";
 
 const API_BASE = "/api";
 
@@ -53,22 +52,18 @@ export default function BookingTicket() {
 
   if (isLoading) {
     return (
-      <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
     );
   }
 
   if (!booking || (booking as any).error) {
     return (
-      <Layout>
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
           <p className="text-muted-foreground">Booking not found.</p>
           <Button asChild variant="outline"><Link href="/">Go Home</Link></Button>
         </div>
-      </Layout>
     );
   }
 
@@ -92,7 +87,6 @@ export default function BookingTicket() {
         ? "Your ticket will be issued after payment is completed."
         : "This booking does not have a ticket yet.";
     return (
-      <Layout>
         <div className="min-h-screen flex items-center justify-center flex-col gap-6 px-4 text-center">
           <Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />
           <div>
@@ -101,7 +95,6 @@ export default function BookingTicket() {
           </div>
           <Button asChild><Link href={actionHref}>{actionLabel}</Link></Button>
         </div>
-      </Layout>
     );
   }
 
@@ -111,7 +104,6 @@ export default function BookingTicket() {
     : new Date(booking.requested_at).toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   return (
-    <Layout>
       <div className="min-h-screen bg-muted/20 pb-20">
         <div className="bg-primary text-primary-foreground py-8">
           <div className="container mx-auto px-4 max-w-lg text-center">
@@ -219,6 +211,5 @@ export default function BookingTicket() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }

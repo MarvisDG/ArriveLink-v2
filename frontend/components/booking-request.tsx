@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { Layout } from "@/components/layout";
 
 const API_BASE = "/api";
 
@@ -83,22 +82,22 @@ export default function BookingRequest() {
 
   if (isLoading) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      
     );
   }
 
   if (isError || !route) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
           <p className="text-muted-foreground">Route not found.</p>
           <Button asChild variant="outline"><Link href="/">Go Home</Link></Button>
         </div>
-      </Layout>
+    
     );
   }
 
@@ -107,7 +106,7 @@ export default function BookingRequest() {
   const totalFare = farePerSeat * parseInt(seats) + convenienceFee;
 
   return (
-    <Layout>
+    
       <div className="min-h-screen bg-muted/20 pb-20">
         <div className="bg-primary text-primary-foreground py-8">
           <div className="container mx-auto px-4 max-w-2xl">
@@ -266,6 +265,6 @@ export default function BookingRequest() {
           </form>
         </div>
       </div>
-    </Layout>
+  
   );
 }

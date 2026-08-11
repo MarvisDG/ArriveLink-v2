@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Bus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
-import { Layout } from "@/components/layout";
 
 const API_BASE = "/api";
 
@@ -118,31 +117,32 @@ export default function BookingAwaiting() {
     if (booking.status === "AWAITING_PAYMENT") {
       router.push(`/booking/payment/${booking.id}`);
     }
-  }, [booking?.status, navigate]);
+  // }, [booking?.status, navigate]);
+  }, [booking?.status, router, booking?.id]);
 
   if (isLoading) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      
     );
   }
 
   if (!booking || (booking as any).error) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
           <p className="text-muted-foreground">Booking not found.</p>
           <Button asChild><Link href="/">Go Home</Link></Button>
         </div>
-      </Layout>
+      
     );
   }
 
   return (
-    <Layout>
+  
       <div className="min-h-screen bg-muted/20 flex flex-col">
         <div className="bg-primary text-primary-foreground py-8">
           <div className="container mx-auto px-4 max-w-lg text-center">
@@ -259,6 +259,6 @@ export default function BookingAwaiting() {
           )}
         </div>
       </div>
-    </Layout>
+    
   );
 }

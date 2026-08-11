@@ -234,7 +234,9 @@ export default function OperatorDashboard() {
       localStorage.removeItem("operator_token");
       router.push("/business/login");
     }
-  }, [meError, navigate]);
+  // }, [meError, navigate]);
+  }, [meError, router]);
+
 
   const { data: routes, isLoading: routesLoading } = useQuery<OperatorRoute[]>({
     queryKey: ["operator", "routes"],

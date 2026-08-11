@@ -1,6 +1,7 @@
 // layout.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Bus, Home, Users, ClipboardCheck } from "lucide-react";
 import { motion } from "framer-motion";
@@ -13,6 +14,7 @@ function getUserToken() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const isLoggedIn = !!getUserToken();
+  const [isNavHovered, setIsNavHovered] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f4fcf4] text-[#1a331a] selection:bg-[#c2f0c2] selection:text-[#0f240f]">
@@ -20,40 +22,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
         <motion.nav
           initial={{ y: -100 }}
-          animate={{ y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="pointer-events-auto relative bg-[#09090b] rounded-b-4xl px-8 py-3 flex items-center gap-10 shadow-2xl"
+          animate={{ 
+            y: 0,
+            padding: isNavHovered ? "12px 32px" : "8px 24px",
+            gap: isNavHovered ? "32px" : "20px",
+          }}
+          onHoverStart={() => setIsNavHovered(true)}
+          onHoverEnd={() => setIsNavHovered(false)}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="pointer-events-auto relative bg-[#142914] rounded-b-[2.5rem] flex items-center shadow-[0_20px_40px_-15px_rgba(20,41,20,0.3)] border-b border-x border-[#2c522c]"
         >
-          <svg className="absolute top-0 left-[-23px] w-6 h-6 text-[#09090b] fill-current" viewBox="0 0 24 24">
+          <svg className="absolute top-0 -left-[23px] w-6 h-6 text-[#142914] fill-current" viewBox="0 0 24 24">
             <path d="M0 0H24V24C24 10.745 13.255 0 0 0Z" />
           </svg>
-          <svg className="absolute top-0 right-[-23px] w-6 h-6 text-[#09090b] fill-current" viewBox="0 0 24 24">
+          <svg className="absolute top-0 -right-[23px] w-6 h-6 text-[#142914] fill-current" viewBox="0 0 24 24">
             <path d="M0 0H24C10.745 0 0 10.745 0 24V0Z" />
           </svg>
 
           <Link href="/app/login" className="relative transition-transform hover:scale-105">
-            <div className="w-11 h-11 rounded-full bg-[#b6e3f4] overflow-hidden border-[3px] border-[#09090b] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[#d1f5d1] overflow-hidden border-2 border-[#142914] flex items-center justify-center">
               <img 
                 src="https://api.dicebear.com/7.x/notionists/svg?seed=Marvel&backgroundColor=transparent" 
                 alt="User" 
                 className="w-full h-full object-cover" 
               />
             </div>
-            <span className="absolute top-0 left-0 w-3.5 h-3.5 bg-[#10b981] rounded-full border-[2.5px] border-[#09090b]"></span>
+            <span className="absolute top-0 left-0 w-3 h-3 bg-[#4ade80] rounded-full border-2 border-[#142914]"></span>
           </Link>
 
-          <Link href="/app" className="text-[#a1a1aa] hover:text-white transition-colors">
-            <Users className="w-6 h-6 fill-current" />
+          <Link href="/app" className="text-[#a5d6a5] hover:text-[#4ade80] transition-colors">
+            <Users className="w-5 h-5 fill-current" />
           </Link>
 
-          <Link href="/bookings" className="text-[#a1a1aa] hover:text-white transition-colors relative">
-            <ClipboardCheck className="w-6 h-6" />
-            <span className="absolute top-1 right-0 w-2.5 h-2.5 bg-[#a1a1aa] rounded-full border-[2.5px] border-[#09090b]"></span>
+          <Link href="/bookings" className="text-[#a5d6a5] hover:text-[#4ade80] transition-colors relative">
+            <ClipboardCheck className="w-5 h-5" />
+            <span className="absolute top-0 -right-1.5 w-2.5 h-2.5 bg-[#4ade80] rounded-full border-2 border-[#142914]"></span>
           </Link>
 
-          <Link href="/" className="flex items-center gap-2.5 bg-white text-black px-6 py-2.5 rounded-[1.25rem] font-bold transition-transform hover:scale-105">
-            <span className="text-[15px]">Home</span>
-            <Home className="w-5 h-5 fill-current" />
+          <Link href="/" className="flex items-center gap-2 bg-[#4ade80] text-[#142914] px-5 py-2 rounded-full font-bold transition-all hover:scale-105 hover:bg-[#3aa53a] hover:text-white hover:shadow-lg hover:shadow-[#3aa53a]/20">
+            <span className="text-sm">Home</span>
+            <Home className="w-4 h-4 fill-current" />
           </Link>
 
         </motion.nav>

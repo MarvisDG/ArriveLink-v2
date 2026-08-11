@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
-import { Layout } from "@/components/layout";
 
 const API_BASE = "/api";
 
@@ -86,7 +85,9 @@ export default function BookingPayment() {
     if (booking.status === "AWAITING_RESPONSE" || booking.status === "CONFIRMED") {
       router.push(`/booking/awaiting/${booking.id}`);
     }
-  }, [booking?.status, navigate]);
+  // }, [booking?.status, navigate]);
+  }, [booking?.status, router, booking?.id]);
+
 
   async function handlePay() {
     setPaying(true);
@@ -105,28 +106,28 @@ export default function BookingPayment() {
 
   if (isLoading) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      
     );
   }
 
   if (!booking || (booking as any).error) {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
           <p className="text-muted-foreground">Booking not found.</p>
           <Button asChild><Link href="/">Go Home</Link></Button>
         </div>
-      </Layout>
+      
     );
   }
 
   if (booking.status === "CANCELLED_TIMEOUT") {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center flex-col gap-6 px-4">
           <AlertTriangle className="w-16 h-16 text-amber-500" />
           <div className="text-center">
@@ -137,13 +138,13 @@ export default function BookingPayment() {
           </div>
           <Button asChild><Link href="/">Search Routes</Link></Button>
         </div>
-      </Layout>
+      
     );
   }
 
   if (booking.status === "REJECTED") {
     return (
-      <Layout>
+    
         <div className="min-h-screen flex items-center justify-center flex-col gap-6 px-4">
           <XCircle className="w-16 h-16 text-destructive" />
           <div className="text-center">
@@ -154,7 +155,7 @@ export default function BookingPayment() {
           </div>
           <Button asChild variant="outline"><Link href="/">Search Routes</Link></Button>
         </div>
-      </Layout>
+      
     );
   }
 
@@ -167,7 +168,7 @@ export default function BookingPayment() {
   const isExpired = remaining === 0 && !!booking.payment_deadline;
 
   return (
-    <Layout>
+    
       <div className="min-h-screen bg-muted/20 pb-20">
         <div className="bg-primary text-primary-foreground py-8">
           <div className="container mx-auto px-4 max-w-lg text-center">
@@ -304,6 +305,5 @@ export default function BookingPayment() {
           </p>
         </div>
       </div>
-    </Layout>
   );
 }
