@@ -1,0 +1,2 @@
+ALTER TABLE "operators" ADD COLUMN "invite_code" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "operators_invite_code_unique" ON "operators" USING btree ("invite_code") WHERE "operators"."invite_code" is not null;

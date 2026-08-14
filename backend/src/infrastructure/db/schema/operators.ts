@@ -9,7 +9,7 @@ import {
   index,
   numeric,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { operatorStatusEnum } from "./enums";
 import { operatorReps } from "./operator-reps";
 import { routes } from "./routes";
@@ -57,6 +57,17 @@ export const operators = pgTable(
      */
     featured: boolean("featured").notNull().default(false),
 
+    /**
+     * Single-use-ish code an admin issues at onboarding so a rep can claim the
+     * operator account themselves (PRD §4 screen 8).
+     *
+     * This is what keeps operator signup consistent with PRD §10's "no
+     * self-serve registration": anyone can POST to the signup endpoint, but
+     * without a code an admin handed out, no account is created. Null means the
+     * operator is not currently accepting new reps.
+     */
+    inviteCode: text("invite_code"),
+
     // ── Denormalised review aggregates ───────────────────────────────────────
     // Recomputed on review write. Kept on the row because the results screen
     // sorts and filters by rating across every operator on a corridor, and an
@@ -81,6 +92,11 @@ export const operators = pgTable(
     uniqueIndex("operators_slug_unique").on(table.slug),
     index("operators_status_idx").on(table.status),
     index("operators_featured_idx").on(table.featured),
+    // Partial: two operators may both have no code, but a live code must
+    // identify exactly one operator or signup could not resolve it.
+    uniqueIndex("operators_invite_code_unique")
+      .on(table.inviteCode)
+      .where(sql`${table.inviteCode} is not null`),
   ],
 );
 

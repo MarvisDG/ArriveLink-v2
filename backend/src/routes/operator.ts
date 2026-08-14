@@ -1,128 +1,229 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
+import { z } from "zod";
 import {
+  loginSchema,
   operatorLogin,
-  operatorSignup,
-  getOperatorFromToken,
-  getOperatorProfile,
-  updateOperatorCompany,
-  getOperatorRoutes,
-  addOperatorRoute,
-  updateOperatorRoute,
-  deleteOperatorRoute,
-} from "../lib/mock-db";
+  operatorSignupSchema,
+  registerOperatorRep,
+} from "../application/auth/auth-service";
+import { findCompany } from "../infrastructure/db/repositories/catalog-repository";
+import * as operatorRepo from "../infrastructure/db/repositories/operator-repository";
+import { authenticate, requireOperator } from "../middleware/authenticate";
+import { asyncHandler } from "../middleware/error-handler";
+import { NotFoundError } from "../domain/shared/errors";
+import { isProduction } from "../config/env";
 
 const router: IRouter = Router();
 
-function getBearerToken(req: { headers: { authorization?: string } }): string | null {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return null;
-  return header.slice(7);
+const REFRESH_COOKIE = "arrivelink_refresh";
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/api",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
 }
 
-function requireOperator(req: Parameters<typeof getBearerToken>[0]) {
-  const token = getBearerToken(req);
-  const operator = getOperatorFromToken(token);
-  return operator;
-}
+const idParam = z.coerce.number().int().positive();
 
-router.post("/operator/auth/login", (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const result = operatorLogin(email, password);
-    res.json(result);
-  } catch (err) {
-    res.status(401).json({ error: err instanceof Error ? err.message : "Login failed" });
-  }
+/** "06:00" or "06:00:00" — the timetable the operator types, not a timestamp. */
+const departureTime = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Use HH:MM, e.g. 06:30");
+
+const routeInputSchema = z.object({
+  departure_city_id: idParam,
+  destination_city_id: idParam,
+  /** Kobo. ₦15,000 is 1500000. */
+  price: z.coerce.number().int().positive("Fare must be greater than zero"),
+  price_type: z.enum(["verified", "last_seen"]).optional(),
+  departure_times: z.array(departureTime).min(1, "Add at least one departure time"),
+  terminal_location: z.string().trim().min(2).max(200),
+  terminal_address: z.string().trim().max(400).nullish(),
+  duration_minutes: z.coerce.number().int().positive().nullish(),
+  seats_total: z.coerce.number().int().positive().max(100).optional(),
 });
 
-router.post("/operator/auth/signup", (req, res) => {
-  try {
-    const result = operatorSignup(req.body);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Signup failed" });
-  }
+const routeUpdateSchema = z.object({
+  price: z.coerce.number().int().positive().optional(),
+  price_type: z.enum(["verified", "last_seen"]).optional(),
+  departure_times: z.array(departureTime).optional(),
+  terminal_location: z.string().trim().min(2).max(200).optional(),
+  terminal_address: z.string().trim().max(400).nullish(),
+  duration_minutes: z.coerce.number().int().positive().nullish(),
+  is_active: z.boolean().optional(),
 });
 
-router.get("/operator/me", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const profile = getOperatorProfile(operator.id);
-  if (!profile) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-  res.json(profile);
+const companyUpdateSchema = z.object({
+  tagline: z.string().trim().max(200).nullish(),
+  about: z.string().trim().max(4000).nullish(),
+  founded_year: z.coerce.number().int().min(1900).max(2100).nullish(),
+  fleet_size: z.coerce.number().int().nonnegative().nullish(),
+  rep_whatsapp: z.string().trim().max(40).nullish(),
+  rep_phone: z.string().trim().max(40).nullish(),
 });
 
-router.put("/operator/me/company", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  try {
-    const result = updateOperatorCompany(operator.company_id, req.body);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Update failed" });
-  }
-});
+// ── Auth ────────────────────────────────────────────────────────────────────
 
-router.get("/operator/me/routes", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  res.json(getOperatorRoutes(operator.company_id));
-});
+router.post(
+  "/operator/auth/login",
+  asyncHandler(async (req, res) => {
+    const input = loginSchema.parse(req.body);
+    const session = await operatorLogin(input, {
+      userAgent: req.get("user-agent") ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    setRefreshCookie(res, session.refreshToken);
+    res.json({ token: session.accessToken, operator_id: session.operatorId });
+  }),
+);
 
-router.post("/operator/me/routes", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  try {
-    const route = addOperatorRoute(operator.company_id, req.body);
-    res.status(201).json(route);
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to add route" });
-  }
-});
+router.post(
+  "/operator/auth/signup",
+  asyncHandler(async (req, res) => {
+    const input = operatorSignupSchema.parse(req.body);
+    const session = await registerOperatorRep(input, {
+      userAgent: req.get("user-agent") ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    setRefreshCookie(res, session.refreshToken);
+    res
+      .status(201)
+      .json({ token: session.accessToken, operator_id: session.operatorId });
+  }),
+);
 
-router.put("/operator/me/routes/:id", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  try {
-    const id = parseInt(req.params.id ?? "", 10);
-    const route = updateOperatorRoute(id, operator.company_id, req.body);
-    res.json(route);
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to update route" });
-  }
-});
+// ── Profile ─────────────────────────────────────────────────────────────────
 
-router.delete("/operator/me/routes/:id", (req, res) => {
-  const operator = requireOperator(req);
-  if (!operator) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  try {
-    const id = parseInt(req.params.id ?? "", 10);
-    deleteOperatorRoute(id, operator.company_id);
+/**
+ * Every route below is scoped by `requireOperator`, which reads the operator id
+ * from the verified token rather than from the request body — a rep cannot edit
+ * another operator's routes by changing an id in the payload.
+ */
+router.get(
+  "/operator/me",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const company = await findCompany(operatorId);
+    if (!company) throw new NotFoundError("Company", operatorId);
+    res.json({ company });
+  }),
+);
+
+router.put(
+  "/operator/me/company",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const input = companyUpdateSchema.parse(req.body);
+
+    await operatorRepo.updateCompanyProfile(operatorId, {
+      ...(input.tagline !== undefined ? { tagline: input.tagline } : {}),
+      ...(input.about !== undefined ? { about: input.about } : {}),
+      ...(input.founded_year !== undefined
+        ? { foundedYear: input.founded_year }
+        : {}),
+      ...(input.fleet_size !== undefined ? { fleetSize: input.fleet_size } : {}),
+    });
+
+    // Contact details belong to the rep row, not the operator row.
+    if (input.rep_phone !== undefined || input.rep_whatsapp !== undefined) {
+      await operatorRepo.updateRepContact(req.auth!.userId, {
+        ...(input.rep_phone !== undefined ? { phone: input.rep_phone } : {}),
+        ...(input.rep_whatsapp !== undefined
+          ? { whatsapp: input.rep_whatsapp }
+          : {}),
+      });
+    }
+
+    const company = await findCompany(operatorId);
+    if (!company) throw new NotFoundError("Company", operatorId);
+    res.json(company);
+  }),
+);
+
+// ── Routes ──────────────────────────────────────────────────────────────────
+
+router.get(
+  "/operator/me/routes",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    res.json(await operatorRepo.listOperatorRoutes(requireOperator(req)));
+  }),
+);
+
+router.post(
+  "/operator/me/routes",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const input = routeInputSchema.parse(req.body);
+
+    const route = await operatorRepo.createRoute(operatorId, {
+      originCityId: input.departure_city_id,
+      destinationCityId: input.destination_city_id,
+      fare: input.price,
+      ...(input.price_type ? { priceType: input.price_type } : {}),
+      departureTimes: input.departure_times,
+      terminalLocation: input.terminal_location,
+      terminalAddress: input.terminal_address ?? null,
+      durationMinutes: input.duration_minutes ?? null,
+      ...(input.seats_total ? { seatsTotal: input.seats_total } : {}),
+    });
+
+    const listed = await operatorRepo.listOperatorRoutes(operatorId);
+    res.status(201).json(listed.find((r) => r.id === route.id) ?? route);
+  }),
+);
+
+router.put(
+  "/operator/me/routes/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const routeId = idParam.parse(req.params.id);
+    const input = routeUpdateSchema.parse(req.body);
+
+    const updated = await operatorRepo.updateRoute(routeId, operatorId, {
+      ...(input.price !== undefined ? { fare: input.price } : {}),
+      ...(input.price_type ? { priceType: input.price_type } : {}),
+      ...(input.terminal_location
+        ? { terminalLocation: input.terminal_location }
+        : {}),
+      ...(input.terminal_address !== undefined
+        ? { terminalAddress: input.terminal_address }
+        : {}),
+      ...(input.duration_minutes !== undefined
+        ? { durationMinutes: input.duration_minutes }
+        : {}),
+      ...(input.is_active !== undefined ? { isActive: input.is_active } : {}),
+      ...(input.departure_times ? { departureTimes: input.departure_times } : {}),
+    });
+
+    // Undefined means no row matched *both* the id and the operator — either it
+    // does not exist or it is someone else's. Same 404 for both, so the endpoint
+    // cannot be used to probe for other operators' route ids.
+    if (!updated) throw new NotFoundError("Route", routeId);
+
+    const listed = await operatorRepo.listOperatorRoutes(operatorId);
+    res.json(listed.find((r) => r.id === routeId) ?? updated);
+  }),
+);
+
+router.delete(
+  "/operator/me/routes/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const routeId = idParam.parse(req.params.id);
+    const ok = await operatorRepo.deactivateRoute(routeId, operatorId);
+    if (!ok) throw new NotFoundError("Route", routeId);
     res.json({ ok: true });
-  } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to delete route" });
-  }
-});
+  }),
+);
 
 export default router;

@@ -126,6 +126,7 @@ async function main(): Promise<void> {
   const operatorSeed = [
     {
       businessName: "GUO Transport",
+      inviteCode: "GUO-2026",
       tagline: "Your journey, our priority",
       about:
         "One of Nigeria's largest interstate operators, running daily departures from Jibowu and terminals in 22 states.",
@@ -140,6 +141,7 @@ async function main(): Promise<void> {
     },
     {
       businessName: "ABC Transport",
+      inviteCode: "ABC-2026",
       tagline: "Comfortable rides across Nigeria",
       about:
         "Premium interstate coach service with assigned seating, onboard refreshments and a punctuality guarantee.",
@@ -154,6 +156,7 @@ async function main(): Promise<void> {
     },
     {
       businessName: "Peace Mass Transit",
+      inviteCode: "PEACE-2026",
       tagline: "Safe and affordable travel",
       about:
         "Wide network across the South-East and North-Central, known for frequent departures on the Enugu corridor.",
@@ -168,6 +171,7 @@ async function main(): Promise<void> {
     },
     {
       businessName: "God is Good Motors",
+      inviteCode: "GIGM-2026",
       tagline: "Travel in comfort and safety",
       about:
         "Benin City-headquartered operator with tracked fleet, online manifests and a strong South-South presence.",
@@ -182,6 +186,7 @@ async function main(): Promise<void> {
     },
     {
       businessName: "Chisco Transport",
+      inviteCode: "CHISCO-2026",
       tagline: "The people's choice",
       about:
         "Long-standing operator on the Lagos–East corridor with terminals in Lagos, Onitsha, Aba and Port Harcourt.",
@@ -202,6 +207,7 @@ async function main(): Promise<void> {
       operatorSeed.map((o) => ({
         businessName: o.businessName,
         slug: slugify(o.businessName),
+        inviteCode: o.inviteCode,
         tagline: o.tagline,
         about: o.about,
         foundedYear: o.foundedYear,

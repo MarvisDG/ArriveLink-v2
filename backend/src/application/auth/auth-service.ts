@@ -13,6 +13,7 @@ import {
   type TokenRole,
 } from "../../infrastructure/auth/tokens";
 import * as repo from "../../infrastructure/db/repositories/user-repository";
+import * as operatorRepo from "../../infrastructure/db/repositories/operator-repository";
 import {
   ConflictError,
   ForbiddenError,
@@ -175,6 +176,85 @@ export async function login(
     { id: user.id, name: user.name, role: user.role },
     ctx,
   );
+}
+
+export const operatorSignupSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  email: z.string().trim().toLowerCase().email("A valid email is required"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(200),
+  company_id: z.coerce.number().int().positive(),
+  invite_code: z.string().trim().min(1, "An invite code is required"),
+  phone: z.string().trim().optional(),
+  whatsapp: z.string().trim().optional(),
+});
+
+/**
+ * Claim an operator account with an admin-issued invite code.
+ *
+ * PRD §10 rules out self-serve operator registration. This is not that: the
+ * endpoint is public, but it creates nothing unless the caller presents a code
+ * an admin already attached to a specific operator. The admin still decides who
+ * gets on the platform; the code just saves them from typing the rep's password.
+ */
+export async function registerOperatorRep(
+  input: z.infer<typeof operatorSignupSchema>,
+  ctx: SessionContext = {},
+): Promise<IssuedSession & { operatorId: number }> {
+  const operator = await operatorRepo.findOperatorByInviteCode(
+    input.company_id,
+    input.invite_code,
+  );
+  // One message for a wrong company id and a wrong code alike: distinguishing
+  // them would let an attacker enumerate which operators have a live code.
+  if (!operator) {
+    throw new ForbiddenError("That invite code is not valid for this company.");
+  }
+  if (operator.status !== "active") {
+    throw new ForbiddenError("This operator account is suspended.");
+  }
+
+  if (await repo.findUserByEmail(input.email)) {
+    throw new ConflictError(
+      "EMAIL_ALREADY_REGISTERED",
+      "That email is already registered. Try signing in instead.",
+    );
+  }
+
+  const passwordHash = await hashPassword(input.password);
+
+  const session = await db.transaction(async (tx) => {
+    const exec = tx as unknown as typeof db;
+
+    const user = await repo.insertUser(
+      {
+        name: input.name ?? operator.businessName,
+        email: input.email,
+        phone: input.phone ?? null,
+        passwordHash,
+        role: "operator_rep",
+      },
+      exec,
+    );
+
+    await operatorRepo.createRepForOperator(
+      {
+        operatorId: operator.id,
+        userId: user.id,
+        email: input.email,
+        phone: input.phone ?? null,
+        whatsapp: input.whatsapp ?? null,
+      },
+      exec,
+    );
+
+    return issueSession(
+      { id: user.id, name: user.name, role: user.role },
+      ctx,
+      exec,
+    );
+  });
+
+  return session as IssuedSession & { operatorId: number };
 }
 
 /** Operator reps sign in through the same credential store, then are role-gated. */
