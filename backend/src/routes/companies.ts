@@ -1,34 +1,49 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import {
-  getCompanyList,
-  getFeaturedCompanies,
-  getCompany,
-  getCompanyReviews,
-} from "../lib/mock-db";
+  companyReviews,
+  featuredCompanies,
+  findCompany,
+  listCompanies,
+} from "../infrastructure/db/repositories/catalog-repository";
+import { asyncHandler } from "../middleware/error-handler";
+import { NotFoundError } from "../domain/shared/errors";
 
 const router: IRouter = Router();
 
-router.get("/companies", (_req, res) => {
-  res.json(getCompanyList());
-});
+const idParam = z.coerce.number().int().positive();
 
-router.get("/companies/featured", (_req, res) => {
-  res.json(getFeaturedCompanies());
-});
+router.get(
+  "/companies",
+  asyncHandler(async (_req, res) => {
+    res.json(await listCompanies());
+  }),
+);
 
-router.get("/companies/:id", (req, res) => {
-  const id = parseInt(req.params.id ?? "", 10);
-  const company = getCompany(id);
-  if (!company) {
-    res.status(404).json({ error: "Company not found" });
-    return;
-  }
-  res.json(company);
-});
+// Before "/companies/:id", or "featured" is parsed as an id.
+router.get(
+  "/companies/featured",
+  asyncHandler(async (_req, res) => {
+    res.json(await featuredCompanies());
+  }),
+);
 
-router.get("/companies/:id/reviews", (req, res) => {
-  const id = parseInt(req.params.id ?? "", 10);
-  res.json(getCompanyReviews(id));
-});
+router.get(
+  "/companies/:id",
+  asyncHandler(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    const company = await findCompany(id);
+    if (!company) throw new NotFoundError("Company", id);
+    res.json(company);
+  }),
+);
+
+router.get(
+  "/companies/:id/reviews",
+  asyncHandler(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    res.json(await companyReviews(id));
+  }),
+);
 
 export default router;

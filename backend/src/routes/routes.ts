@@ -1,26 +1,54 @@
 import { Router, type IRouter } from "express";
-import { searchRoutes, getPopularRoutes, getPlatformStats } from "../lib/mock-db";
+import { z } from "zod";
+import {
+  platformStats,
+  popularRoutes,
+  searchRoutes,
+  upcomingDeparturesForRoute,
+} from "../infrastructure/db/repositories/catalog-repository";
+import { asyncHandler } from "../middleware/error-handler";
 
 const router: IRouter = Router();
 
-router.get("/routes/popular", (_req, res) => {
-  res.json(getPopularRoutes());
+const searchQuerySchema = z.object({
+  from_city_id: z.coerce.number().int().positive("from_city_id is required"),
+  to_city_id: z.coerce.number().int().positive("to_city_id is required"),
 });
 
-router.get("/routes/search", (req, res) => {
-  const fromCityId = parseInt(req.query.from_city_id as string ?? "", 10);
-  const toCityId = parseInt(req.query.to_city_id as string ?? "", 10);
+// Declared before "/routes/:id/departures" so the literal path is not captured
+// by the parameterised one.
+router.get(
+  "/routes/popular",
+  asyncHandler(async (_req, res) => {
+    res.json(await popularRoutes());
+  }),
+);
 
-  if (!fromCityId || !toCityId) {
-    res.status(400).json({ error: "from_city_id and to_city_id are required" });
-    return;
-  }
+router.get(
+  "/routes/search",
+  asyncHandler(async (req, res) => {
+    const { from_city_id, to_city_id } = searchQuerySchema.parse(req.query);
+    res.json(await searchRoutes(from_city_id, to_city_id));
+  }),
+);
 
-  res.json(searchRoutes(fromCityId, toCityId));
-});
+/**
+ * The concrete departures behind a route's `departure_times`. The booking flow
+ * needs the departure id and its remaining seats, not just the time label.
+ */
+router.get(
+  "/routes/:id/departures",
+  asyncHandler(async (req, res) => {
+    const id = z.coerce.number().int().positive().parse(req.params.id);
+    res.json(await upcomingDeparturesForRoute(id));
+  }),
+);
 
-router.get("/stats/platform", (_req, res) => {
-  res.json(getPlatformStats());
-});
+router.get(
+  "/stats/platform",
+  asyncHandler(async (_req, res) => {
+    res.json(await platformStats());
+  }),
+);
 
 export default router;
