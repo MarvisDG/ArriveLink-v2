@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import {
+  findRouteDetail,
   platformStats,
   popularRoutes,
   searchRoutes,
   upcomingDeparturesForRoute,
 } from "../infrastructure/db/repositories/catalog-repository";
 import { asyncHandler } from "../middleware/error-handler";
+import { NotFoundError } from "../domain/shared/errors";
 
 const router: IRouter = Router();
 
@@ -41,6 +43,16 @@ router.get(
   asyncHandler(async (req, res) => {
     const id = z.coerce.number().int().positive().parse(req.params.id);
     res.json(await upcomingDeparturesForRoute(id));
+  }),
+);
+
+router.get(
+  "/routes/:id",
+  asyncHandler(async (req, res) => {
+    const id = z.coerce.number().int().positive().parse(req.params.id);
+    const route = await findRouteDetail(id);
+    if (!route) throw new NotFoundError("Route", id);
+    res.json(route);
   }),
 );
 

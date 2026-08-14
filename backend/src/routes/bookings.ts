@@ -1,134 +1,157 @@
-import { Router } from "express";
-import * as db from "../lib/mock-db";
+import { Router, type IRouter } from "express";
+import { z } from "zod";
+import {
+  acceptBooking,
+  boardBooking,
+  createBooking,
+  createBookingSchema,
+  getBooking,
+  getOperatorWallet,
+  listBookingsByPhone,
+  listOperatorActive,
+  listOperatorRequests,
+  markBookingPaid,
+  rejectBooking,
+  searchForBoarding,
+} from "../application/booking/booking-service";
+import {
+  authenticate,
+  optionalAuth,
+  requireOperator,
+} from "../middleware/authenticate";
+import { asyncHandler } from "../middleware/error-handler";
 
-const router = Router();
+const router: IRouter = Router();
 
-function getOperatorToken(req: { headers: { authorization?: string } }) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) return null;
-  return db.getOperatorFromToken(auth.slice(7));
-}
+const idParam = z.coerce.number().int().positive();
 
-router.get("/routes/:id", (req, res) => {
-  const id = parseInt(req.params.id ?? "0");
-  const route = db.getRouteDetail(id);
-  if (!route) return res.status(404).json({ error: "Route not found" });
-  return res.json(route);
-});
+// ── Traveler ────────────────────────────────────────────────────────────────
 
-router.post("/bookings", (req, res) => {
-  try {
-    const { route_id, traveler_name, traveler_phone, seats_requested, departure_time } = req.body;
-    if (!route_id || !traveler_name || !traveler_phone || !seats_requested || !departure_time) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-    const auth = req.headers.authorization;
-    let traveler_id: number | undefined;
-    if (auth?.startsWith("Bearer ")) {
-      const user = db.getUserFromToken(auth.slice(7));
-      if (user) traveler_id = user.id;
-    }
-    const booking = db.createBooking({
-      route_id: parseInt(String(route_id)),
-      traveler_id,
-      traveler_name: String(traveler_name),
-      traveler_phone: String(traveler_phone),
-      seats_requested: parseInt(String(seats_requested)),
-      departure_time: String(departure_time),
-    });
-    return res.status(201).json(booking);
-  } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
-  }
-});
+/**
+ * `optionalAuth`: a guest can reserve a seat — PRD §3 puts registration after
+ * the booking, not before it. When a token is present the booking is attributed
+ * to that user so it shows up in their history.
+ */
+router.post(
+  "/bookings",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const input = createBookingSchema.parse(req.body);
+    const booking = await createBooking(input, req.auth?.userId);
+    res.status(201).json(booking);
+  }),
+);
 
-router.get("/bookings", (req, res) => {
-  const { phone } = req.query;
-  if (!phone || typeof phone !== "string") {
-    return res.status(400).json({ error: "phone query parameter is required" });
-  }
-  return res.json(db.getTravelerBookings(phone));
-});
+/**
+ * Guests look their bookings up by the phone number they booked with, which is
+ * the only identifier they have. Signed-in travelers get their own list without
+ * needing to supply one.
+ */
+router.get(
+  "/bookings",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const phone = z
+      .string()
+      .trim()
+      .min(1, "phone query parameter is required")
+      .parse(req.query.phone);
+    res.json(await listBookingsByPhone(phone));
+  }),
+);
 
-router.get("/bookings/:id", (req, res) => {
-  const id = parseInt(req.params.id ?? "0");
-  const booking = db.getBookingDetail(id);
-  if (!booking) return res.status(404).json({ error: "Booking not found" });
-  return res.json(booking);
-});
+router.get(
+  "/bookings/:id",
+  asyncHandler(async (req, res) => {
+    res.json(await getBooking(idParam.parse(req.params.id)));
+  }),
+);
 
-router.post("/bookings/:id/pay", (req, res) => {
-  try {
-    const id = parseInt(req.params.id ?? "0");
-    const booking = db.payBooking(id);
-    return res.json(booking);
-  } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Payment failed" });
-  }
-});
+/**
+ * Development stand-in for the Paystack webhook. The service refuses to run
+ * this in production, where the webhook is the only thing that may mark a
+ * booking paid (PRD §9).
+ */
+router.post(
+  "/bookings/:id/pay",
+  asyncHandler(async (req, res) => {
+    res.json(await markBookingPaid(idParam.parse(req.params.id)));
+  }),
+);
 
-router.get("/operator/bookings/requests", (req, res) => {
-  const operator = getOperatorToken(req);
-  if (!operator) return res.status(401).json({ error: "Unauthorized" });
-  return res.json(db.getOperatorBookingRequests(operator.company_id));
-});
+// ── Operator ────────────────────────────────────────────────────────────────
 
-router.post("/operator/bookings/requests/:id/accept", (req, res) => {
-  try {
-    const operator = getOperatorToken(req);
-    if (!operator) return res.status(401).json({ error: "Unauthorized" });
-    const id = parseInt(req.params.id ?? "0");
-    const booking = db.acceptBookingRequest(id, operator.company_id);
-    return res.json(booking);
-  } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
-  }
-});
+router.get(
+  "/operator/bookings/requests",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    res.json(await listOperatorRequests(requireOperator(req)));
+  }),
+);
 
-router.post("/operator/bookings/requests/:id/reject", (req, res) => {
-  try {
-    const operator = getOperatorToken(req);
-    if (!operator) return res.status(401).json({ error: "Unauthorized" });
-    const id = parseInt(req.params.id ?? "0");
-    const booking = db.rejectBookingRequest(id, operator.company_id);
-    return res.json(booking);
-  } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
-  }
-});
+router.get(
+  "/operator/bookings/active",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    res.json(await listOperatorActive(requireOperator(req)));
+  }),
+);
 
-router.get("/operator/bookings/active", (req, res) => {
-  const operator = getOperatorToken(req);
-  if (!operator) return res.status(401).json({ error: "Unauthorized" });
-  return res.json(db.getOperatorActiveBookings(operator.company_id));
-});
+router.get(
+  "/operator/bookings/search",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const q = z.string().trim().min(1, "q parameter is required").parse(req.query.q);
+    res.json(await searchForBoarding(q, operatorId));
+  }),
+);
 
-router.get("/operator/bookings/search", (req, res) => {
-  const operator = getOperatorToken(req);
-  if (!operator) return res.status(401).json({ error: "Unauthorized" });
-  const { q } = req.query;
-  if (!q || typeof q !== "string") return res.status(400).json({ error: "q param required" });
-  const booking = db.searchBookingForBoarding(q, operator.company_id);
-  if (!booking) return res.status(404).json({ error: "No booking found matching that query" });
-  return res.json(booking);
-});
+router.post(
+  "/operator/bookings/requests/:id/accept",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const booking = await acceptBooking(
+      idParam.parse(req.params.id),
+      operatorId,
+      req.auth!.userId,
+    );
+    res.json(booking);
+  }),
+);
 
-router.post("/operator/bookings/:id/board", (req, res) => {
-  try {
-    const operator = getOperatorToken(req);
-    if (!operator) return res.status(401).json({ error: "Unauthorized" });
-    const id = parseInt(req.params.id ?? "0");
-    const booking = db.boardBooking(id, operator.company_id);
-    return res.json(booking);
-  } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
-  }
-});
+router.post(
+  "/operator/bookings/requests/:id/reject",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    const reason = z.string().trim().max(500).optional().parse(req.body?.reason);
+    const booking = await rejectBooking(
+      idParam.parse(req.params.id),
+      operatorId,
+      req.auth!.userId,
+      reason,
+    );
+    res.json(booking);
+  }),
+);
 
-router.get("/operator/wallet", (req, res) => {
-  const operator = getOperatorToken(req);
-  if (!operator) return res.status(401).json({ error: "Unauthorized" });
-  return res.json(db.getOperatorWallet(operator.company_id));
-});
+router.post(
+  "/operator/bookings/:id/board",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const operatorId = requireOperator(req);
+    res.json(await boardBooking(idParam.parse(req.params.id), operatorId));
+  }),
+);
+
+router.get(
+  "/operator/wallet",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    res.json(await getOperatorWallet(requireOperator(req)));
+  }),
+);
 
 export default router;

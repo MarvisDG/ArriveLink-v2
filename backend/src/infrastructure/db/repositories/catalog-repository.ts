@@ -329,6 +329,82 @@ export async function companyReviews(
   }));
 }
 
+/**
+ * A single route with its corridor and operator — what the booking-request
+ * screen loads before the traveler picks a departure time.
+ */
+export async function findRouteDetail(id: number, exec: DbExecutor = db) {
+  const origin = alias(cities, "origin");
+  const destination = alias(cities, "destination");
+
+  const [row] = await exec
+    .select({
+      id: routes.id,
+      price: routes.fare,
+      price_type: routes.priceType,
+      price_verified_date: routes.priceVerifiedDate,
+      terminal_location: routes.terminalLocation,
+      terminal_address: routes.terminalAddress,
+      duration_minutes: routes.durationMinutes,
+      seats_total: routes.seatsTotal,
+      is_active: routes.isActive,
+      departure_times: departureTimesFor(routes.id),
+      status: nextDepartureStatusFor(routes.id),
+      origin_id: origin.id,
+      origin_name: origin.name,
+      origin_state: origin.state,
+      destination_id: destination.id,
+      destination_name: destination.name,
+      destination_state: destination.state,
+      company_id: operators.id,
+      company_name: operators.businessName,
+      company_logo_url: operators.logoUrl,
+      company_is_verified: operators.isVerified,
+      company_rating: operators.rating,
+      company_review_count: operators.reviewCount,
+    })
+    .from(routes)
+    .innerJoin(operators, eq(routes.operatorId, operators.id))
+    .innerJoin(origin, eq(routes.originCityId, origin.id))
+    .innerJoin(destination, eq(routes.destinationCityId, destination.id))
+    .where(and(eq(routes.id, id), eq(routes.isActive, true)))
+    .limit(1);
+
+  if (!row) return undefined;
+
+  return {
+    id: row.id,
+    price: row.price,
+    price_type: row.price_type,
+    price_verified_date: row.price_verified_date,
+    departure_times: row.departure_times ?? [],
+    terminal_location: row.terminal_location,
+    terminal_address: row.terminal_address,
+    duration_minutes: row.duration_minutes,
+    seats_total: row.seats_total,
+    is_active: row.is_active,
+    status: row.status,
+    departure_city: {
+      id: row.origin_id,
+      name: row.origin_name,
+      state: row.origin_state,
+    },
+    destination_city: {
+      id: row.destination_id,
+      name: row.destination_name,
+      state: row.destination_state,
+    },
+    company: {
+      id: row.company_id,
+      name: row.company_name,
+      logo_url: row.company_logo_url,
+      is_verified: row.company_is_verified,
+      rating: Number(row.company_rating),
+      review_count: row.company_review_count,
+    },
+  };
+}
+
 export async function operatorExists(
   id: number,
   exec: DbExecutor = db,
