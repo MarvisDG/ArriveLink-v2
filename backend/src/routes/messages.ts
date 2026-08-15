@@ -1,123 +1,160 @@
-import { Router } from "express";
+import { Router, type IRouter, type Request } from "express";
+import { z } from "zod";
+import * as repo from "../infrastructure/db/repositories/messaging-repository";
+import { operatorExists } from "../infrastructure/db/repositories/catalog-repository";
+import { findUserById } from "../infrastructure/db/repositories/user-repository";
+import { authenticate, optionalAuth } from "../middleware/authenticate";
+import { asyncHandler } from "../middleware/error-handler";
 import {
-  getUserFromToken,
-  getOperatorFromToken,
-  getOperatorProfile,
-  getUserConversations,
-  getCompanyConversations,
-  getConversationMessages,
-  sendMessage,
-  startConversation,
-  markConversationRead,
-} from "../lib/mock-db";
+  NotFoundError,
+  UnauthenticatedError,
+  ValidationError,
+} from "../domain/shared/errors";
 
-const router = Router();
+const router: IRouter = Router();
 
-function getAuthContext(headers: Record<string, string | string[] | undefined>) {
-  const authHeader = (headers["authorization"] ?? "") as string;
-  const token = authHeader.replace("Bearer ", "");
-  const user = getUserFromToken(token);
-  if (user) return { role: "user" as const, user, operator: null };
-  const operator = getOperatorFromToken(token);
-  if (operator) return { role: "operator" as const, user: null, operator };
-  return null;
+const idParam = z.coerce.number().int().positive();
+
+const startSchema = z.object({
+  company_id: idParam,
+  initial_message: z.string().trim().min(1, "Write a message").max(4000),
+  guest_name: z.string().trim().min(2).max(120).optional(),
+  guest_email: z.string().trim().email().optional(),
+});
+
+const sendSchema = z.object({
+  body: z.string().trim().min(1, "Write a message").max(4000),
+});
+
+/**
+ * Resolve the caller to a conversation participant.
+ *
+ * An operator rep is scoped to their operator, a traveler to themselves. This
+ * is what every read and write below is filtered by, so a conversation id alone
+ * never grants access.
+ */
+function viewerFor(req: Request): repo.Viewer {
+  if (!req.auth) throw new UnauthenticatedError();
+  if (req.auth.role === "operator_rep" && req.auth.operatorId !== undefined) {
+    return { kind: "operator", operatorId: req.auth.operatorId };
+  }
+  return { kind: "user", userId: req.auth.userId };
 }
 
-router.post("/messages/start", (req, res) => {
-  try {
-    const { company_id, initial_message, guest_name, guest_email } = req.body;
-    if (!company_id || !initial_message) {
-      return res.status(400).json({ error: "company_id and initial_message are required" });
+/**
+ * Guests may open an enquiry — PRD §3 puts registration after the booking, and
+ * asking a question comes before that. A guest supplies their name instead of a
+ * token; a signed-in traveler supplies neither.
+ */
+router.post(
+  "/messages/start",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const input = startSchema.parse(req.body);
+
+    if (!(await operatorExists(input.company_id))) {
+      throw new NotFoundError("Company", input.company_id);
     }
-
-    const token = ((req.headers["authorization"] ?? "") as string).replace("Bearer ", "");
-    const user = getUserFromToken(token);
-
-    if (!user && !guest_name) {
-      return res.status(400).json({ error: "guest_name is required when not logged in" });
-    }
-
-    const result = startConversation({
-      user_id: user?.id,
-      guest_name: guest_name ?? undefined,
-      guest_email: guest_email ?? undefined,
-      company_id,
-      initial_message,
-    });
-
-    return res.status(201).json(result);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to start conversation";
-    return res.status(500).json({ error: message });
-  }
-});
-
-router.get("/messages/conversations", (req, res) => {
-  const ctx = getAuthContext(req.headers as Record<string, string | string[] | undefined>);
-  if (!ctx) return res.status(401).json({ error: "Unauthorized" });
-
-  if (ctx.role === "user") {
-    return res.json(getUserConversations(ctx.user.id));
-  }
-
-  if (ctx.role === "operator") {
-    const profile = getOperatorProfile(ctx.operator.id);
-    if (!profile) return res.status(404).json({ error: "Operator not found" });
-    return res.json(getCompanyConversations(profile.company.id));
-  }
-
-  return res.status(401).json({ error: "Unauthorized" });
-});
-
-router.get("/messages/conversations/:id", (req, res) => {
-  const ctx = getAuthContext(req.headers as Record<string, string | string[] | undefined>);
-  if (!ctx) return res.status(401).json({ error: "Unauthorized" });
-
-  const conversationId = parseInt(req.params.id, 10);
-  const msgs = getConversationMessages(conversationId);
-
-  if (ctx.role === "user") {
-    markConversationRead(conversationId, "user");
-  } else {
-    markConversationRead(conversationId, "company");
-  }
-
-  return res.json({ conversation_id: conversationId, messages: msgs });
-});
-
-router.post("/messages/conversations/:id/send", (req, res) => {
-  try {
-    const ctx = getAuthContext(req.headers as Record<string, string | string[] | undefined>);
-    if (!ctx) return res.status(401).json({ error: "Unauthorized" });
-
-    const conversationId = parseInt(req.params.id, 10);
-    const { body } = req.body;
-    if (!body) return res.status(400).json({ error: "body is required" });
 
     let senderName: string;
-    let senderType: "user" | "company";
-
-    if (ctx.role === "user") {
-      senderName = ctx.user.name;
-      senderType = "user";
+    if (req.auth) {
+      const user = await findUserById(req.auth.userId);
+      if (!user) throw new UnauthenticatedError("Account no longer exists");
+      senderName = user.name;
     } else {
-      const profile = getOperatorProfile(ctx.operator.id);
-      senderName = profile?.company.name ?? "Company";
-      senderType = "company";
+      if (!input.guest_name) {
+        throw new ValidationError(
+          "guest_name is required when you are not signed in",
+        );
+      }
+      senderName = input.guest_name;
     }
 
-    const msg = sendMessage({
-      conversation_id: conversationId,
-      sender_type: senderType,
-      sender_name: senderName,
+    const { conversation, message } = await repo.startConversation({
+      operatorId: input.company_id,
+      userId: req.auth?.userId ?? null,
+      // Guest identity is only meaningful when there is no account behind it.
+      guestName: req.auth ? null : (input.guest_name ?? null),
+      guestEmail: req.auth ? null : (input.guest_email ?? null),
+      senderName,
+      body: input.initial_message,
+    });
+
+    res.status(201).json({
+      conversation_id: conversation.id,
+      message: {
+        id: message.id,
+        conversation_id: conversation.id,
+        sender_type: "user",
+        sender_name: message.senderName,
+        body: message.body,
+        created_at: message.createdAt.toISOString(),
+      },
+    });
+  }),
+);
+
+router.get(
+  "/messages/conversations",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    res.json(await repo.listConversationsFor(viewerFor(req)));
+  }),
+);
+
+router.get(
+  "/messages/conversations/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const viewer = viewerFor(req);
+    const conversationId = idParam.parse(req.params.id);
+
+    // Scoped lookup: not yours reads as not found, so ids cannot be probed.
+    const conversation = await repo.findConversationFor(conversationId, viewer);
+    if (!conversation) throw new NotFoundError("Conversation", conversationId);
+
+    const messages = await repo.listMessages(conversationId);
+    await repo.markRead(conversationId, viewer);
+
+    res.json({ conversation_id: conversationId, conversation, messages });
+  }),
+);
+
+router.post(
+  "/messages/conversations/:id/send",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const viewer = viewerFor(req);
+    const conversationId = idParam.parse(req.params.id);
+    const { body } = sendSchema.parse(req.body);
+
+    const conversation = await repo.findConversationFor(conversationId, viewer);
+    if (!conversation) throw new NotFoundError("Conversation", conversationId);
+
+    let senderName: string;
+    if (viewer.kind === "operator") {
+      senderName = conversation.company_name;
+    } else {
+      const user = await findUserById(viewer.userId);
+      senderName = user?.name ?? "Traveler";
+    }
+
+    const message = await repo.appendMessage({
+      conversationId,
+      senderType: viewer.kind === "operator" ? "operator" : "user",
+      senderName,
       body,
     });
 
-    return res.status(201).json(msg);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to send message";
-    return res.status(500).json({ error: message });
-  }
-});
+    res.status(201).json({
+      id: message.id,
+      conversation_id: conversationId,
+      sender_type: viewer.kind === "operator" ? "company" : "user",
+      sender_name: message.senderName,
+      body: message.body,
+      created_at: message.createdAt.toISOString(),
+    });
+  }),
+);
 
 export default router;

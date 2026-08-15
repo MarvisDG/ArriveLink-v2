@@ -18,6 +18,10 @@ import {
   SeatsUnavailableError,
   ValidationError,
 } from "../../domain/shared/errors";
+import {
+  calculateFees,
+  type PaymentMethod,
+} from "../../domain/payment/fees";
 import { env } from "../../config/env";
 import { logger } from "../../lib/logger";
 
@@ -93,11 +97,21 @@ export async function createBooking(
     input.departure_date,
   );
 
+  // No such departure is a 404. A departure that exists but is full is a 409
+  // carrying the seats actually left, so the UI can say "only 2 seats remain"
+  // instead of claiming the bus does not exist.
   if (!departure) {
     throw new NotFoundError(
+      "Departure",
       input.departure_date
-        ? `No departure with ${input.seats_requested} seat(s) available on ${input.departure_date} at ${input.departure_time}`
-        : "No upcoming departure with enough seats for this route and time",
+        ? `${input.departure_date} ${input.departure_time}`
+        : input.departure_time,
+    );
+  }
+  if (departure.seatsAvailable < input.seats_requested) {
+    throw new SeatsUnavailableError(
+      input.seats_requested,
+      departure.seatsAvailable,
     );
   }
   if (!departure.routeActive) {
@@ -290,6 +304,47 @@ export async function boardBooking(bookingId: number, operatorId: number) {
 }
 
 /**
+ * PRD §3 screen 5 / §8 — the checkout quote.
+ *
+ * Pure read. Quoting must not advance the state machine, so a traveler toggling
+ * between card and transfer to compare the processing fee cannot accidentally
+ * consume their own payment window.
+ */
+export async function getCheckoutQuote(
+  bookingId: number,
+  method: PaymentMethod = "card",
+) {
+  const booking = await requireBooking(bookingId);
+
+  const fees = calculateFees({
+    farePerSeat: booking.fare_per_seat,
+    seats: booking.seats_requested,
+    method,
+    convenienceFee: CONVENIENCE_FEE,
+  });
+
+  return {
+    booking_id: booking.id,
+    reference: booking.reference,
+    status: booking.status,
+    /**
+     * PRD §8 step 14: payment is requested only after CONFIRMED is reached.
+     * The quote is still readable beforehand so the request screen can preview
+     * the cost, but the client must not offer to pay until this is true.
+     */
+    payable: booking.status === "AWAITING_PAYMENT",
+    payment_deadline: booking.payment_deadline,
+    seats: booking.seats_requested,
+    fare_per_seat: booking.fare_per_seat,
+    payment_method: method,
+    fare_subtotal: fees.fareSubtotal,
+    convenience_fee: fees.convenienceFee,
+    processing_fee: fees.processingFee,
+    total: fees.total,
+  };
+}
+
+/**
  * Mark a booking paid and issue its ticket.
  *
  * PRD §9 requires payment status to be driven by Paystack webhooks, not by the
@@ -298,7 +353,10 @@ export async function boardBooking(bookingId: number, operatorId: number) {
  * machine, ticket issuance and wallet credit are already exercised. It refuses
  * to run in production for that reason.
  */
-export async function markBookingPaid(bookingId: number) {
+export async function markBookingPaid(
+  bookingId: number,
+  method: PaymentMethod = "card",
+) {
   if (env.NODE_ENV === "production") {
     throw new ForbiddenError(
       "Payments are confirmed by the Paystack webhook, not by this endpoint.",
@@ -330,10 +388,40 @@ export async function markBookingPaid(bookingId: number) {
     );
     await repo.updateBookingStatus(locked.id, "TICKET_ISSUED", {}, exec);
 
+    /**
+     * Record the money (PRD §6 payments, PRD §8 line items).
+     *
+     * Written inside the same transaction as the status change: a booking that
+     * says PAID with no payment row behind it is a trip nobody can reconcile,
+     * and a settlement dispute with no evidence.
+     */
+    const fees = calculateFees({
+      farePerSeat: locked.fare_per_seat,
+      seats: locked.seats_requested,
+      method,
+      convenienceFee: env.CONVENIENCE_FEE_KOBO,
+    });
+
+    await repo.upsertPayment(
+      {
+        bookingId: locked.id,
+        fareAmount: fees.fareSubtotal,
+        convenienceFee: fees.convenienceFee,
+        processingFee: fees.processingFee,
+        paymentMethod: method,
+        status: "success",
+        paidAt: now,
+      },
+      exec,
+    );
+
+    // The operator is owed the fare only. The convenience fee is ArriveLink's
+    // and the processing fee is Paystack's — crediting the gross here is how an
+    // operator ends up being paid our revenue as well as their own.
     await repo.creditPendingBalance(
       locked.operator_id,
       locked.id,
-      locked.fare_per_seat * locked.seats_requested,
+      fees.fareSubtotal,
       `Booking #${locked.id} paid`,
       exec,
     );

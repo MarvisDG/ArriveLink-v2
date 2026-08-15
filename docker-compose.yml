@@ -14,7 +14,12 @@ services:
       # Deterministic collation so ORDER BY matches Neon.
       POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US --encoding=UTF8"
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # 5433 on the host, not 5432, on purpose. A native Postgres (Postgres.app
+      # or brew) binds 127.0.0.1:5432 specifically, which beats Docker's
+      # wildcard bind — so `localhost:5432` silently reaches the host instance
+      # instead of this container, and you migrate one database while the API
+      # reads another. Publishing on 5433 makes the two unambiguous.
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

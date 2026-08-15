@@ -755,7 +755,7 @@ function MessagesSection() {
           </div>
           <div>
             <p className="font-semibold text-sm text-gray-900">
-              {activeConv.guest_name ?? "Traveler"}
+              {activeConv.counterparty_name ?? "Traveler"}
             </p>
             <p className="text-xs text-gray-500">
               {activeConv.guest_email ?? "Registered user"}
@@ -826,7 +826,7 @@ function MessagesSection() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-gray-900">
-                  {conv.guest_name ?? "Registered Traveler"}
+                  {conv.counterparty_name ?? "Traveler"}
                 </p>
                 {conv.last_message && (
                   <p className="text-xs text-gray-500 truncate mt-0.5">{conv.last_message}</p>

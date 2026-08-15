@@ -6,6 +6,7 @@ import {
   createBooking,
   createBookingSchema,
   getBooking,
+  getCheckoutQuote,
   getOperatorWallet,
   listBookingsByPhone,
   listOperatorActive,
@@ -24,6 +25,9 @@ import { asyncHandler } from "../middleware/error-handler";
 const router: IRouter = Router();
 
 const idParam = z.coerce.number().int().positive();
+
+/** PRD §8: the processing fee varies by method, so the method is part of the quote. */
+const paymentMethodSchema = z.enum(["card", "transfer"]);
 
 // ── Traveler ────────────────────────────────────────────────────────────────
 
@@ -68,6 +72,22 @@ router.get(
 );
 
 /**
+ * PRD §3 screen 5 — the checkout breakdown.
+ *
+ * Fare subtotal, convenience fee and processing fee are returned as three
+ * separate figures because the PRD requires the traveler to see them as
+ * separate line items, and the processing fee is the one that changes with the
+ * chosen method. Read-only: quoting a price must not move the state machine.
+ */
+router.get(
+  "/bookings/:id/checkout",
+  asyncHandler(async (req, res) => {
+    const method = paymentMethodSchema.parse(req.query.payment_method ?? "card");
+    res.json(await getCheckoutQuote(idParam.parse(req.params.id), method));
+  }),
+);
+
+/**
  * Development stand-in for the Paystack webhook. The service refuses to run
  * this in production, where the webhook is the only thing that may mark a
  * booking paid (PRD §9).
@@ -75,7 +95,8 @@ router.get(
 router.post(
   "/bookings/:id/pay",
   asyncHandler(async (req, res) => {
-    res.json(await markBookingPaid(idParam.parse(req.params.id)));
+    const method = paymentMethodSchema.parse(req.body?.payment_method ?? "card");
+    res.json(await markBookingPaid(idParam.parse(req.params.id), method));
   }),
 );
 

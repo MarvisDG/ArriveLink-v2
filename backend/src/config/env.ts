@@ -34,6 +34,14 @@ const envSchema = z.object({
   /** Comma-separated list of allowed browser origins. */
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
 
+  /**
+   * Shared-secret fallback for the admin console, which predates the admin
+   * role. No default on purpose: unset means the header is rejected outright,
+   * so a deployment cannot inherit a guessable secret by forgetting to set one.
+   * The real path is a JWT with role = 'admin'.
+   */
+  ADMIN_SECRET: z.string().min(16).optional(),
+
   // ── Booking windows (PRD §5) ───────────────────────────────────────────────
   /** Rep has this long to accept or reject. PRD says 10 minutes. */
   RESPONSE_WINDOW_MINUTES: z.coerce.number().int().positive().default(10),

@@ -5,6 +5,7 @@ import { bookings } from "../schema/bookings";
 import { cities } from "../schema/cities";
 import { operators } from "../schema/operators";
 import { routes, routeDepartures } from "../schema/routes";
+import { payments } from "../schema/payments";
 import { tickets } from "../schema/tickets";
 import { wallets, walletTransactions } from "../schema/wallets";
 import type { BookingStatus } from "../../../domain/booking/booking-status";
@@ -259,6 +260,18 @@ export async function searchOperatorBooking(
  * `seats`. The public contract speaks in timetable labels; inventory lives per
  * dated departure, and this is the only place the two meet.
  */
+/**
+ * Locate the departure a booking request refers to.
+ *
+ * Deliberately does **not** filter on seat availability. Whether a departure
+ * exists and whether it still has room are two different answers — folding them
+ * together made a sold-out bus indistinguishable from a route that was never
+ * scheduled, so the traveler got "not found" for a bus they were looking at.
+ * The caller compares `seatsAvailable` and raises the right error.
+ *
+ * When no date is pinned, the earliest future departure wins; `seats` only
+ * influences that choice, never whether a row is returned at all.
+ */
 export async function findNextDeparture(
   routeId: number,
   timeLabel: string,
@@ -288,11 +301,17 @@ export async function findNextDeparture(
         onDate
           ? eq(routeDepartures.departureDate, onDate)
           : sql`${routeDepartures.departureDate} >= current_date`,
-        eq(routeDepartures.status, "available"),
-        sql`${routeDepartures.seatsAvailable} >= ${seats}`,
+        // 'cancelled' departures are genuinely gone; 'full' is not — a full bus
+        // still exists and must report itself as sold out, not as missing.
+        sql`${routeDepartures.status} <> 'cancelled'`,
       ),
     )
-    .orderBy(asc(routeDepartures.departureDate))
+    // Prefer a date that can actually seat the request, but still return a full
+    // one if that is all there is, so the caller can say "sold out".
+    .orderBy(
+      desc(sql`${routeDepartures.seatsAvailable} >= ${seats}`),
+      asc(routeDepartures.departureDate),
+    )
     .limit(1);
   return row;
 }
@@ -419,6 +438,70 @@ export async function insertTicket(
   const [row] = await exec.insert(tickets).values(values).returning();
   if (!row) throw new Error("Insert returned no row");
   return row;
+}
+
+// ── Payments ────────────────────────────────────────────────────────────────
+
+/**
+ * Record the money for a booking.
+ *
+ * Upsert on booking_id rather than insert: a checkout that is started, abandoned
+ * and retried must update the one payment row, not accumulate a row per attempt.
+ * The unique index on payments.booking_id is what makes that safe.
+ *
+ * `totalAmount` is deliberately absent — it is a generated column, computed by
+ * Postgres from the three parts, so a total that disagrees with its components
+ * cannot be written.
+ */
+export async function upsertPayment(
+  values: {
+    bookingId: number;
+    fareAmount: number;
+    convenienceFee: number;
+    processingFee: number;
+    paymentMethod: "card" | "transfer" | null;
+    status: "pending" | "success" | "failed" | "abandoned" | "refunded";
+    paystackReference?: string | null;
+    paystackPayload?: unknown;
+    paidAt?: Date | null;
+    failureReason?: string | null;
+  },
+  exec: DbExecutor,
+) {
+  const [row] = await exec
+    .insert(payments)
+    .values(values)
+    .onConflictDoUpdate({
+      target: payments.bookingId,
+      set: {
+        fareAmount: values.fareAmount,
+        convenienceFee: values.convenienceFee,
+        processingFee: values.processingFee,
+        paymentMethod: values.paymentMethod,
+        status: values.status,
+        paystackReference: values.paystackReference ?? null,
+        paystackPayload: values.paystackPayload ?? null,
+        paidAt: values.paidAt ?? null,
+        failureReason: values.failureReason ?? null,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  if (!row) throw new Error("Payment upsert returned no row");
+  return row;
+}
+
+export async function findPaymentByBooking(
+  bookingId: number,
+  exec: DbExecutor = db,
+) {
+  const [row] = await exec
+    .select()
+    .from(payments)
+    .where(eq(payments.bookingId, bookingId))
+    .limit(1);
+  return row ?? null;
 }
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
